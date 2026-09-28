@@ -1,9 +1,11 @@
 package arca
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/invopop/gobl/bill"
@@ -11,6 +13,7 @@ import (
 	"github.com/invopop/gobl/currency"
 	"github.com/invopop/gobl/i18n"
 	"github.com/invopop/gobl/l10n"
+	"github.com/invopop/gobl/num"
 	"github.com/invopop/gobl/org"
 	"github.com/invopop/gobl/rules"
 	"github.com/invopop/gobl/rules/is"
@@ -88,6 +91,7 @@ func normalizeBillInvoice(inv *bill.Invoice) {
 	normalizeBillInvoiceCustomerVATStatus(inv.Customer)
 	normalizeBillInvoiceTaxDocType(inv)
 	normalizeBillInvoiceTaxConcept(inv)
+	normalizeBillInvoiceVATRefund(inv)
 }
 
 func normalizeBillInvoiceCustomerVATStatus(p *org.Party) {
@@ -227,6 +231,44 @@ func normalizeBillInvoiceTaxConcept(inv *bill.Invoice) {
 	inv.Tax = inv.Tax.MergeExtensions(tax.ExtensionsOf(cbc.CodeMap{
 		ExtKeyConcept: code,
 	}))
+}
+
+func normalizeBillInvoiceVATRefund(inv *bill.Invoice) {
+	if !invoiceDocTypeIsT(inv) {
+		return
+	}
+	inv.Charges = slices.DeleteFunc(inv.Charges, func(c *bill.Charge) bool {
+		return c != nil && c.Key == ChargeKeyVATRefund
+	})
+	if refund := tourismVATRefund(inv); !refund.IsZero() {
+		inv.Charges = append(inv.Charges, &bill.Charge{
+			Key:    ChargeKeyVATRefund,
+			Reason: "Reintegro de IVA",
+			Amount: refund.Negate(),
+		})
+	}
+}
+
+// tourismVATRefund calculates a non-T copy to avoid recursing into this normalizer.
+func tourismVATRefund(inv *bill.Invoice) num.Amount {
+	cp := new(bill.Invoice)
+	data, err := json.Marshal(inv)
+	if err != nil || json.Unmarshal(data, cp) != nil {
+		return num.AmountZero
+	}
+	cp.Tax.Ext = cp.Tax.Ext.Delete(ExtKeyDocType)
+	if err := cp.Calculate(); err != nil || cp.Totals == nil || cp.Totals.Taxes == nil {
+		return num.AmountZero
+	}
+	refund := cp.Currency.Def().Zero()
+	if ct := cp.Totals.Taxes.Category(tax.CategoryVAT); ct != nil {
+		for _, rt := range ct.Rates {
+			if rt.Ext.Get(ExtKeyTourismItem).In("1", "2") {
+				refund = refund.Add(rt.Amount)
+			}
+		}
+	}
+	return refund
 }
 
 func billInvoiceRules() *rules.Set {

@@ -4,10 +4,14 @@ import (
 	"fmt"
 
 	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/cbc"
 	"github.com/invopop/gobl/rules"
 	"github.com/invopop/gobl/rules/is"
 	"github.com/invopop/gobl/tax"
 )
+
+// ChargeKeyVATRefund identifies the VAT refunded to foreign tourists.
+const ChargeKeyVATRefund cbc.Key = "vat-refund"
 
 func billChargeRules() *rules.Set {
 	return rules.For(new(bill.Charge),
