@@ -53,7 +53,7 @@ import (
 | `ar-arca-vat-rate` | VAT rate code for tax combos. Normalized from the GOBL rate. |
 | `ar-arca-tax-type` | Tax type for charges reported as other taxes. |
 | `ar-arca-tourism-type` | Issuer-receiver relationship for tourism (type T) invoices. |
-| `ar-arca-tourism-item` | Tourism item code for type T lines, discounts, and advances. |
+| `ar-arca-tourism-item` | Tourism item code for type T lines and discounts. |
 
 ## Development
 
