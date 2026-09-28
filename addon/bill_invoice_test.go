@@ -1720,6 +1720,152 @@ func TestTourismInvoiceTypeT(t *testing.T) {
 	})
 }
 
+func TestTourismVATRefund(t *testing.T) {
+	refundAdvances := func(inv *bill.Invoice) []*pay.Record {
+		var out []*pay.Record
+		if inv.Payment == nil {
+			return out
+		}
+		for _, a := range inv.Payment.Advances {
+			if a.Key == arca.MeansKeyVATRefund {
+				out = append(out, a)
+			}
+		}
+		return out
+	}
+	hotelVAT := func(inv *bill.Invoice) num.Amount {
+		sum := num.MakeAmount(0, 2)
+		for _, rt := range inv.Totals.Taxes.Category(tax.CategoryVAT).Rates {
+			if rt.Ext.Get(arca.ExtKeyTourismItem).In("1", "2") {
+				sum = sum.Add(rt.Amount)
+			}
+		}
+		return sum
+	}
+
+	t.Run("adds refund advance for accommodation VAT", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		require.NoError(t, inv.Calculate())
+		require.NoError(t, rules.Validate(inv))
+		as := refundAdvances(inv)
+		require.Len(t, as, 1)
+		assert.Equal(t, "21.00", as[0].Amount.String())
+		assert.Equal(t, "Reintegro de IVA", as[0].Description)
+		assert.Empty(t, inv.Charges)
+		assert.Equal(t, "21.00", inv.Totals.Tax.String())
+		assert.Equal(t, "121.00", inv.Totals.Payable.String())
+		assert.Equal(t, "100.00", inv.Totals.Due.String())
+	})
+
+	t.Run("prices include VAT with advance", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Tax.PricesInclude = tax.CategoryVAT
+		inv.Lines[0].Item.Price = num.NewAmount(38765432, 2)
+		inv.Payment = &bill.PaymentDetails{
+			Advances: []*pay.Record{{Description: "Advance", Amount: num.MakeAmount(25000000, 2)}},
+		}
+		require.NoError(t, inv.Calculate())
+		require.NoError(t, rules.Validate(inv))
+		assert.Equal(t, "67278.85", inv.Totals.Tax.String())
+		assert.Equal(t, "67278.85", refundAdvances(inv)[0].Amount.String())
+		assert.Equal(t, "387654.32", inv.Totals.Payable.String())
+		assert.Equal(t, "317278.85", inv.Totals.Advances.String())
+		assert.Equal(t, "70375.47", inv.Totals.Due.String())
+	})
+
+	t.Run("matches calculated VAT with mixed lines and discounts", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Tax.PricesInclude = tax.CategoryVAT
+		inv.Lines[0].Quantity = num.MakeAmount(3, 0)
+		inv.Lines[0].Item.Price = num.NewAmount(3333333, 3)
+		inv.Lines[0].Discounts = []*bill.LineDiscount{{Percent: num.NewPercentage(75, 3)}}
+		inv.Lines = append(inv.Lines,
+			&bill.Line{
+				Quantity: num.MakeAmount(2, 0),
+				Item:     &org.Item{Name: "Room with breakfast", Price: num.NewAmount(12345, 2), Key: org.ItemKeyGoods},
+				Taxes: tax.Set{{Category: tax.CategoryVAT, Rate: tax.KeyStandard,
+					Ext: tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "2"})}},
+			},
+			&bill.Line{
+				Quantity: num.MakeAmount(1, 0),
+				Item:     &org.Item{Name: "Minibar", Price: num.NewAmount(5099, 2), Key: org.ItemKeyGoods},
+				Taxes: tax.Set{{Category: tax.CategoryVAT, Rate: tax.KeyStandard,
+					Ext: tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "5"})}},
+			},
+		)
+		require.NoError(t, inv.Calculate())
+		require.NoError(t, rules.Validate(inv))
+		as := refundAdvances(inv)
+		require.Len(t, as, 1)
+		assert.Equal(t, hotelVAT(inv).String(), as[0].Amount.String())
+		assert.Equal(t, inv.Totals.Sum.String(), inv.Totals.Payable.String())
+		assert.Equal(t, inv.Totals.Sum.Subtract(hotelVAT(inv)).String(), inv.Totals.Due.String())
+	})
+
+	t.Run("recalculating keeps a single refund advance", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Payment = &bill.PaymentDetails{
+			Advances: []*pay.Record{{Description: "Deposit", Amount: num.MakeAmount(1000, 2)}},
+		}
+		require.NoError(t, inv.Calculate())
+		inv.Lines[0].Item.Price = num.NewAmount(20000, 2)
+		require.NoError(t, inv.Calculate())
+		require.NoError(t, inv.Calculate())
+		require.Len(t, inv.Payment.Advances, 2)
+		as := refundAdvances(inv)
+		require.Len(t, as, 1)
+		assert.Equal(t, "42.00", as[0].Amount.String())
+		assert.Equal(t, "242.00", inv.Totals.Payable.String())
+		assert.Equal(t, "190.00", inv.Totals.Due.String())
+	})
+
+	t.Run("overrides a provided refund advance", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Payment = &bill.PaymentDetails{
+			Advances: []*pay.Record{{Key: arca.MeansKeyVATRefund, Description: "Custom", Amount: num.MakeAmount(100, 2)}},
+		}
+		require.NoError(t, inv.Calculate())
+		require.NoError(t, rules.Validate(inv))
+		as := refundAdvances(inv)
+		require.Len(t, as, 1)
+		assert.Equal(t, "Reintegro de IVA", as[0].Description)
+		assert.Equal(t, "21.00", as[0].Amount.String())
+		assert.Equal(t, "100.00", inv.Totals.Due.String())
+	})
+
+	t.Run("removes the refund advance when no longer refundable", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		require.NoError(t, inv.Calculate())
+		require.Len(t, refundAdvances(inv), 1)
+		inv.Lines[0].Taxes[0].Ext = tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "5"})
+		require.NoError(t, inv.Calculate())
+		assert.Nil(t, inv.Payment)
+		assert.Nil(t, inv.Totals.Due)
+	})
+
+	t.Run("bypass tag without totals does not fail", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.SetTags(tax.TagBypass)
+		assert.NotPanics(t, func() { _ = inv.Calculate() })
+	})
+
+	t.Run("no refund advance without accommodation lines", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Lines[0].Taxes[0].Ext = tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "5"})
+		require.NoError(t, inv.Calculate())
+		assert.Nil(t, inv.Payment)
+		assert.Nil(t, inv.Totals.Due)
+	})
+
+	t.Run("leaves other doc types untouched", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Tax.Ext = inv.Tax.Ext.Set(arca.ExtKeyDocType, "6")
+		require.NoError(t, inv.Calculate())
+		assert.Nil(t, inv.Payment)
+		assert.Nil(t, inv.Totals.Due)
+	})
+}
+
 // Helper functions
 
 func assertValidationError(t *testing.T, inv *bill.Invoice, expected string) {
