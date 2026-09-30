@@ -19,8 +19,8 @@ import (
 	"github.com/invopop/gobl/tax"
 )
 
-// MeansKeyVATRefund identifies the payment advance for the VAT refunded to foreign tourists.
-const MeansKeyVATRefund cbc.Key = "waiver+vat-refund"
+// WaiverVATRefund identifies the payment advance for the VAT refunded to foreign tourists.
+const WaiverVATRefund cbc.Key = "vat-refund"
 
 const (
 	// TagMonotax is used for Invoice C - when the supplier is under the
@@ -241,7 +241,7 @@ func normalizeBillInvoiceVATRefund(inv *bill.Invoice) {
 	}
 	if p := inv.Payment; p != nil {
 		p.Advances = slices.DeleteFunc(p.Advances, func(a *pay.Record) bool {
-			return a.Key == MeansKeyVATRefund
+			return a != nil && a.Waiver == WaiverVATRefund
 		})
 		if len(p.Advances) == 0 && p.Terms == nil && p.Instructions == nil && p.Payee == nil && p.Payer == nil {
 			inv.Payment = nil
@@ -253,7 +253,7 @@ func normalizeBillInvoiceVATRefund(inv *bill.Invoice) {
 		}
 		// The amount is calculated by GOBL from the rounded VAT totals matching the filters.
 		inv.Payment.Advances = append(inv.Payment.Advances, &pay.Record{
-			Key:         MeansKeyVATRefund,
+			Waiver:      WaiverVATRefund,
 			Description: "Reintegro de IVA",
 			Taxes:       vatRefundTaxes(),
 		})

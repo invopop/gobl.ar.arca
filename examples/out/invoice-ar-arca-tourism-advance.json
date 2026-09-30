@@ -4,7 +4,7 @@
 		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
 		"dig": {
 			"alg": "sha256",
-			"val": "0c14c3d849ec3ee0514e4e8322d7071086da9573fc93abff143e1bee3b296ae3"
+			"val": "70761fc0f056aec6c76037b30f21246b43f76bb3b221bb2ebf708454abbd2491"
 		}
 	},
 	"doc": {
@@ -115,7 +115,7 @@
 					"amount": "250000.00"
 				},
 				{
-					"key": "waiver+vat-refund",
+					"waiver": "vat-refund",
 					"description": "Reintegro de IVA",
 					"taxes": [
 						{

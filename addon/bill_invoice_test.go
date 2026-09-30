@@ -1727,7 +1727,7 @@ func TestTourismVATRefund(t *testing.T) {
 			return out
 		}
 		for _, a := range inv.Payment.Advances {
-			if a.Key == arca.MeansKeyVATRefund {
+			if a.Waiver == arca.WaiverVATRefund {
 				out = append(out, a)
 			}
 		}
@@ -1822,7 +1822,7 @@ func TestTourismVATRefund(t *testing.T) {
 	t.Run("overrides a provided refund advance", func(t *testing.T) {
 		inv := testInvoiceTourism(t)
 		inv.Payment = &bill.PaymentDetails{
-			Advances: []*pay.Record{{Key: arca.MeansKeyVATRefund, Description: "Custom", Amount: num.MakeAmount(100, 2)}},
+			Advances: []*pay.Record{{Waiver: arca.WaiverVATRefund, Description: "Custom", Amount: num.MakeAmount(100, 2)}},
 		}
 		require.NoError(t, inv.Calculate())
 		require.NoError(t, rules.Validate(inv))
