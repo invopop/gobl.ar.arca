@@ -1663,7 +1663,7 @@ func TestTourismInvoiceTypeT(t *testing.T) {
 		assertValidationError(t, inv, "tourism invoice discount requires 'ar-arca-tourism-item' extension")
 	})
 
-	t.Run("type T invoice with discount carrying tourism code passes", func(t *testing.T) {
+	t.Run("type T invoice with discount missing VAT fails", func(t *testing.T) {
 		inv := testInvoiceTourism(t)
 		inv.Discounts = []*bill.Discount{
 			{
@@ -1672,29 +1672,47 @@ func TestTourismInvoiceTypeT(t *testing.T) {
 				Ext:    tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "1"}),
 			},
 		}
+		assertValidationError(t, inv, "tourism invoice discount requires VAT taxes")
+	})
+
+	t.Run("type T invoice with discount VAT missing tourism code fails", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Discounts = []*bill.Discount{
+			{
+				Reason: "Promo",
+				Amount: num.MakeAmount(1000, 2),
+				Taxes:  tax.Set{{Category: tax.CategoryVAT, Rate: tax.KeyStandard}},
+				Ext:    tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "1"}),
+			},
+		}
+		assertValidationError(t, inv, "tourism invoice discount tax requires 'ar-arca-tourism-item' extension")
+	})
+
+	t.Run("type T invoice with discount carrying tourism code and VAT passes", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		inv.Discounts = []*bill.Discount{
+			{
+				Reason: "Promo",
+				Amount: num.MakeAmount(1000, 2),
+				Taxes: tax.Set{
+					{
+						Category: tax.CategoryVAT,
+						Rate:     tax.KeyStandard,
+						Ext:      tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "1"}),
+					},
+				},
+				Ext: tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "1"}),
+			},
+		}
 		require.NoError(t, inv.Calculate())
 		require.NoError(t, rules.Validate(inv))
 	})
 
-	t.Run("type T invoice with advance missing tourism code fails", func(t *testing.T) {
+	t.Run("type T invoice with advance passes without tourism code", func(t *testing.T) {
 		inv := testInvoiceTourism(t)
 		inv.Payment = &bill.PaymentDetails{
 			Advances: []*pay.Record{
 				{Description: "Deposit", Amount: num.MakeAmount(1000, 2)},
-			},
-		}
-		assertValidationError(t, inv, "tourism invoice advance requires 'ar-arca-tourism-item' extension")
-	})
-
-	t.Run("type T invoice with advance carrying tourism code passes", func(t *testing.T) {
-		inv := testInvoiceTourism(t)
-		inv.Payment = &bill.PaymentDetails{
-			Advances: []*pay.Record{
-				{
-					Description: "Deposit",
-					Amount:      num.MakeAmount(1000, 2),
-					Ext:         tax.ExtensionsOf(cbc.CodeMap{arca.ExtKeyTourismItem: "1"}),
-				},
 			},
 		}
 		require.NoError(t, inv.Calculate())
