@@ -1864,6 +1864,16 @@ func TestTourismVATRefund(t *testing.T) {
 		assert.Nil(t, inv.Payment)
 		assert.Nil(t, inv.Totals.Due)
 	})
+
+	t.Run("removes the refund advance when no longer type T", func(t *testing.T) {
+		inv := testInvoiceTourism(t)
+		require.NoError(t, inv.Calculate())
+		require.Len(t, refundAdvances(inv), 1)
+		inv.Tax.Ext = inv.Tax.Ext.Set(arca.ExtKeyDocType, "6")
+		require.NoError(t, inv.Calculate())
+		assert.Nil(t, inv.Payment)
+		assert.Nil(t, inv.Totals.Due)
+	})
 }
 
 // Helper functions

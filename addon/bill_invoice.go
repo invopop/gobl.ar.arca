@@ -236,18 +236,16 @@ func normalizeBillInvoiceTaxConcept(inv *bill.Invoice) {
 }
 
 func normalizeBillInvoiceVATRefund(inv *bill.Invoice) {
-	if !invoiceDocTypeIsT(inv) {
-		return
-	}
 	if p := inv.Payment; p != nil {
+		n := len(p.Advances)
 		p.Advances = slices.DeleteFunc(p.Advances, func(a *pay.Record) bool {
 			return a != nil && a.Waiver == WaiverVATRefund
 		})
-		if len(p.Advances) == 0 && p.Terms == nil && p.Instructions == nil && p.Payee == nil && p.Payer == nil {
+		if len(p.Advances) < n && len(p.Advances) == 0 && p.Terms == nil && p.Instructions == nil && p.Payee == nil && p.Payer == nil {
 			inv.Payment = nil
 		}
 	}
-	if invoiceHasVATRefund(inv) {
+	if invoiceDocTypeIsT(inv) && invoiceHasVATRefund(inv) {
 		if inv.Payment == nil {
 			inv.Payment = new(bill.PaymentDetails)
 		}
