@@ -3,7 +3,7 @@ module github.com/invopop/gobl.ar.arca
 go 1.25.0
 
 require (
-	github.com/invopop/gobl v0.507.0
+	github.com/invopop/gobl v0.507.1-0.20260930162502-d4bccf150c5a
 	github.com/stretchr/testify v1.11.1
 )
 
