@@ -1,0 +1,196 @@
+{
+	"$schema": "https://gobl.org/draft-0/envelope",
+	"head": {
+		"uuid": "8a51fd30-2a27-11ee-be56-0242ac120002",
+		"dig": {
+			"alg": "sha256",
+			"val": "574f6d3c185180deddf885d621dd578ce4398c8977d85c3a6d17a67b598e7b50"
+		}
+	},
+	"doc": {
+		"$schema": "https://gobl.org/draft-0/bill/invoice",
+		"$regime": "AR",
+		"$addons": [
+			"ar-arca-v4"
+		],
+		"uuid": "0190f3a8-6c1e-7b40-9a52-1a0b2c3d4e01",
+		"type": "standard",
+		"series": "3",
+		"code": "00000101",
+		"issue_date": "2026-08-15",
+		"currency": "ARS",
+		"tax": {
+			"prices_include": "VAT",
+			"ext": {
+				"ar-arca-concept": "2",
+				"ar-arca-doc-type": "195",
+				"ar-arca-tourism-type": "1"
+			}
+		},
+		"supplier": {
+			"name": "Hotel Patagonia S.A.",
+			"tax_id": {
+				"country": "AR",
+				"code": "30712345671"
+			},
+			"addresses": [
+				{
+					"street": "Av. Bustillo 1500",
+					"locality": "San Carlos de Bariloche",
+					"region": "Río Negro",
+					"code": "8400",
+					"country": "AR"
+				}
+			],
+			"emails": [
+				{
+					"addr": "reservas@hotelpatagonia.com.ar"
+				}
+			]
+		},
+		"customer": {
+			"name": "Lucía Fernández",
+			"identities": [
+				{
+					"key": "passport",
+					"code": "PAB123456",
+					"ext": {
+						"ar-arca-identity-type": "94"
+					}
+				}
+			],
+			"addresses": [
+				{
+					"street": "Calle Mayor 10",
+					"locality": "Madrid",
+					"code": "28013",
+					"country": "ES"
+				}
+			],
+			"emails": [
+				{
+					"addr": "lucia.fernandez@example.com"
+				}
+			],
+			"ext": {
+				"ar-arca-vat-status": "5"
+			}
+		},
+		"lines": [
+			{
+				"i": 1,
+				"quantity": "1",
+				"item": {
+					"name": "Habitación doble estándar - noche 1",
+					"price": "60500.00"
+				},
+				"sum": "60500.00",
+				"taxes": [
+					{
+						"cat": "VAT",
+						"key": "standard",
+						"rate": "general",
+						"percent": "21.0%",
+						"ext": {
+							"ar-arca-tourism-item": "1",
+							"ar-arca-vat-rate": "5"
+						}
+					}
+				],
+				"total": "60500.00"
+			},
+			{
+				"i": 2,
+				"quantity": "1",
+				"item": {
+					"name": "Habitación doble estándar - noche 2",
+					"price": "54450.00"
+				},
+				"sum": "54450.00",
+				"taxes": [
+					{
+						"cat": "VAT",
+						"key": "standard",
+						"rate": "general",
+						"percent": "21.0%",
+						"ext": {
+							"ar-arca-tourism-item": "1",
+							"ar-arca-vat-rate": "5"
+						}
+					}
+				],
+				"total": "54450.00"
+			}
+		],
+		"ordering": {
+			"period": {
+				"start": "2026-08-10",
+				"end": "2026-08-15"
+			}
+		},
+		"payment": {
+			"advances": [
+				{
+					"waiver": "vat-refund",
+					"description": "Reintegro de IVA",
+					"taxes": [
+						{
+							"cat": "VAT",
+							"ext": {
+								"ar-arca-tourism-item": "1"
+							}
+						},
+						{
+							"cat": "VAT",
+							"ext": {
+								"ar-arca-tourism-item": "2"
+							}
+						}
+					],
+					"amount": "19950.00"
+				}
+			],
+			"terms": {
+				"key": "due-date",
+				"due_dates": [
+					{
+						"date": "2026-08-15",
+						"amount": "95000.00",
+						"percent": "100%"
+					}
+				]
+			}
+		},
+		"totals": {
+			"sum": "114950.00",
+			"tax_included": "19950.00",
+			"total": "95000.00",
+			"taxes": {
+				"categories": [
+					{
+						"code": "VAT",
+						"rates": [
+							{
+								"key": "standard",
+								"ext": {
+									"ar-arca-tourism-item": "1",
+									"ar-arca-vat-rate": "5"
+								},
+								"base": "95000.00",
+								"percent": "21.0%",
+								"amount": "19950.00"
+							}
+						],
+						"amount": "19950.00"
+					}
+				],
+				"sum": "19950.00"
+			},
+			"tax": "19950.00",
+			"total_with_tax": "114950.00",
+			"payable": "114950.00",
+			"advance": "19950.00",
+			"due": "95000.00"
+		}
+	}
+}

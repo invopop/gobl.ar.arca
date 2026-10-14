@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/invopop/gobl/bill"
@@ -12,10 +13,14 @@ import (
 	"github.com/invopop/gobl/i18n"
 	"github.com/invopop/gobl/l10n"
 	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/pay"
 	"github.com/invopop/gobl/rules"
 	"github.com/invopop/gobl/rules/is"
 	"github.com/invopop/gobl/tax"
 )
+
+// WaiverVATRefund identifies the payment advance for the VAT refunded to foreign tourists.
+const WaiverVATRefund cbc.Key = "vat-refund"
 
 const (
 	// TagMonotax is used for Invoice C - when the supplier is under the
@@ -88,6 +93,7 @@ func normalizeBillInvoice(inv *bill.Invoice) {
 	normalizeBillInvoiceCustomerVATStatus(inv.Customer)
 	normalizeBillInvoiceTaxDocType(inv)
 	normalizeBillInvoiceTaxConcept(inv)
+	normalizeBillInvoiceVATRefund(inv)
 }
 
 func normalizeBillInvoiceCustomerVATStatus(p *org.Party) {
@@ -227,6 +233,52 @@ func normalizeBillInvoiceTaxConcept(inv *bill.Invoice) {
 	inv.Tax = inv.Tax.MergeExtensions(tax.ExtensionsOf(cbc.CodeMap{
 		ExtKeyConcept: code,
 	}))
+}
+
+func normalizeBillInvoiceVATRefund(inv *bill.Invoice) {
+	if p := inv.Payment; p != nil {
+		n := len(p.Advances)
+		p.Advances = slices.DeleteFunc(p.Advances, func(a *pay.Record) bool {
+			return a != nil && a.Waiver == WaiverVATRefund
+		})
+		if len(p.Advances) < n && len(p.Advances) == 0 && p.Terms == nil && p.Instructions == nil && p.Payee == nil && p.Payer == nil {
+			inv.Payment = nil
+		}
+	}
+	if invoiceDocTypeIsT(inv) && invoiceHasVATRefund(inv) {
+		if inv.Payment == nil {
+			inv.Payment = new(bill.PaymentDetails)
+		}
+		// The amount is calculated by GOBL from the rounded VAT totals matching the filters.
+		inv.Payment.Advances = append(inv.Payment.Advances, &pay.Record{
+			Waiver:      WaiverVATRefund,
+			Description: "Reintegro de IVA",
+			Taxes:       vatRefundTaxes(),
+		})
+	}
+}
+
+// vatRefundTaxes selects the accommodation VAT refunded to foreign tourists.
+func vatRefundTaxes() []*tax.Filter {
+	return []*tax.Filter{
+		{Category: tax.CategoryVAT, Ext: tax.ExtensionsOf(cbc.CodeMap{ExtKeyTourismItem: "1"})},
+		{Category: tax.CategoryVAT, Ext: tax.ExtensionsOf(cbc.CodeMap{ExtKeyTourismItem: "2"})},
+	}
+}
+
+// invoiceHasVATRefund reports whether any line tax matches the VAT refund filters.
+func invoiceHasVATRefund(inv *bill.Invoice) bool {
+	filters := vatRefundTaxes()
+	for _, l := range inv.Lines {
+		for _, c := range l.Taxes {
+			for _, f := range filters {
+				if c.Category == f.Category && c.Ext.Contains(f.Ext) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func billInvoiceRules() *rules.Set {
