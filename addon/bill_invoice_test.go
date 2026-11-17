@@ -39,6 +39,26 @@ func TestInvoiceCustomerVATStatusNormalization(t *testing.T) {
 		assert.Equal(t, "5", inv.Customer.Ext.Get(arca.ExtKeyVATStatus).String())
 	})
 
+	for _, status := range []cbc.Code{"9", "8"} { // Foreign Customer, Foreign Supplier
+		t.Run("customer without tax ID keeps foreign status "+status.String(), func(t *testing.T) {
+			inv := testInvoiceWithGoods(t)
+			inv.Customer.TaxID = nil
+			inv.Customer.Ext = tax.ExtensionsOf(cbc.CodeMap{
+				arca.ExtKeyVATStatus: status,
+			})
+			inv.Customer.Identities = []*org.Identity{
+				{
+					Code: "55000002053",
+					Ext: tax.ExtensionsOf(cbc.CodeMap{
+						arca.ExtKeyIdentityType: "80", // CUIT país
+					}),
+				},
+			}
+			norm.Normalize(inv, tax.AddonContext(arca.V4))
+			assert.Equal(t, status, inv.Customer.Ext.Get(arca.ExtKeyVATStatus))
+		})
+	}
+
 	t.Run("customer with AR tax ID sets registered VAT responsible", func(t *testing.T) {
 		inv := testInvoiceWithGoods(t)
 		inv.Customer.Ext = tax.Extensions{}
