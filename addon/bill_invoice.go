@@ -102,13 +102,15 @@ func normalizeBillInvoiceCustomerVATStatus(p *org.Party) {
 	}
 	switch {
 	case p.TaxID == nil:
-		// No tax ID: Final Consumer or Uncategorized
+		// No tax ID: Final Consumer, Uncategorized, or foreign (e.g. identified by CUIT país or passport)
 		p.Ext = p.Ext.SetOneOf(ExtKeyVATStatus,
 			"5",  // Final Consumer
 			"4",  // Exempt Subject
 			"7",  // Uncategorized Subject
 			"10", // VAT Exempt Law 19640
 			"15", // VAT Not Applicable
+			"9",  // Foreign Customer
+			"8",  // Foreign Supplier
 		)
 	case p.TaxID.Country != l10n.AR.Tax():
 		// Foreign tax ID: Foreign Customer or Supplier

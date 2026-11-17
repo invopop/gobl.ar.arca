@@ -732,6 +732,10 @@ var extensions = []*cbc.Definition{
 				When the customer has a CUIT, CUIL, or a valid foreign tax identification number,
 				these should be included in the ~tax_id~ field instead, and this extension is not required.
 
+				The exception is tourism invoices (Comprobante T) with relation ~2~, ~3~, ~4~ or ~6~,
+				which only accept a CUIT: a foreign customer also adds the CUIT país of its country as
+				an identity with code ~80~.
+
 				Example usage for a final consumer with DNI:
 
 				~~~json
@@ -1020,9 +1024,10 @@ var extensions = []*cbc.Definition{
 
 				GOBL will automatically normalize this value based on the customer's tax identification:
 
-				Customer without tax ID (final consumers): Defaults to ~5~ (Final Consumer). Also
-				accepts ~4~ (Exempt Subject), ~7~ (Uncategorized), ~10~ (VAT Exempt Law 19640),
-				or ~15~ (VAT Not Applicable).
+				Customer without tax ID: Defaults to ~5~ (Final Consumer). Also accepts ~4~ (Exempt
+				Subject), ~7~ (Uncategorized), ~10~ (VAT Exempt Law 19640), ~15~ (VAT Not Applicable),
+				~9~ (Foreign Customer), or ~8~ (Foreign Supplier). Use ~9~ for foreign customers
+				identified only by a CUIT país, passport, or foreign ID card.
 
 				Customer with foreign tax ID: Defaults to ~9~ (Foreign Customer). Also accepts
 				~8~ (Foreign Supplier).
